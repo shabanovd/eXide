@@ -52,8 +52,6 @@ eXide.namespace("eXide.app");
 eXide.app = (function() {
 	
 	var editor;
-	
-	var debuger;
 
 	var deploymentEditor;
 	var dbBrowser;
@@ -70,7 +68,6 @@ eXide.app = (function() {
 
 		init: function(afterInitCallback) {
 			editor = new eXide.edit.Editor(document.getElementById("editor"));
-			debuger = new eXide.XQueryDebuger(document.getElementById("editor"));
 			deploymentEditor = new eXide.edit.PackageEditor(document.getElementById("deployment-editor"));
 			dbBrowser = new eXide.browse.Browser(document.getElementById("open-dialog"));
             deploymentEditor.addEventListener("change", null, function() {
@@ -320,10 +317,6 @@ eXide.app = (function() {
 					eXide.util.error(xhr.responseText, "Server Error");
 				}
 			});
-		},
-		
-		startDebug: function() {
-		    debuger.startDebug();
 		},
 
 		checkQuery: function() {
@@ -667,14 +660,6 @@ eXide.app = (function() {
 				}
 			});
 			button.click(eXide.app.runQuery);
-			
-			button = $("#debug").button({
-				icons: {
-					primary: "ui-icon-play"
-				}
-			});
-			button.click(eXide.app.startDebug);
-			
 			button = $("#validate").button({
 				icons: {
 					primary: "ui-icon-check"
