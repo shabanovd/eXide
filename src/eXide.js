@@ -41,6 +41,10 @@ $(document).ready(function() {
         } else if (snippet) {
             eXide.app.newDocument(snippet);
         }
+        
+        if (typeof eXide_onload == "function") {
+            eXide_onload(eXide.app);
+        }
     });
 });
 
@@ -57,6 +61,7 @@ eXide.app = (function() {
 
 	var deploymentEditor;
 	var dbBrowser;
+    var projects;
 	var preferences;
     
 	var hitCount = 0;
@@ -65,28 +70,34 @@ eXide.app = (function() {
 	var endOffset = 0;
 	
 	var login = null;
-	
+    
 	return {
 
 		init: function(afterInitCallback) {
+<<<<<<< HEAD
 			editor = new eXide.edit.Editor(document.getElementById("editor"));
 			debuger = new eXide.XQueryDebuger(document.getElementById("editor"));
 			deploymentEditor = new eXide.edit.PackageEditor(document.getElementById("deployment-editor"));
+=======
+            var menu = new eXide.util.Menubar($(".menu"));
+            projects = new eXide.edit.Projects();
+			editor = new eXide.edit.Editor(document.getElementById("editor"), menu);
+			deploymentEditor = new eXide.edit.PackageEditor(projects);
+>>>>>>> refs/remotes/wolfs/master
 			dbBrowser = new eXide.browse.Browser(document.getElementById("open-dialog"));
             deploymentEditor.addEventListener("change", null, function() {
                 dbBrowser.onChange();
                 eXide.app.openDocument();
             });
 			preferences = new eXide.util.Preferences(editor);
-            
-			eXide.app.initGUI();
+			
+            eXide.app.initGUI(menu);
 			
             // save restored paths for later
 			var restored = eXide.app.restoreState();
 		    
 		    editor.init();
 		    editor.addEventListener("outlineChange", eXide.app.onOutlineChange);
-		    eXide.app.resize();
 
 			$(window).resize(eXide.app.resize);
 			
@@ -115,8 +126,8 @@ eXide.app = (function() {
 			editor.resize();
 		},
 
-		newDocument: function(data) {
-			editor.newDocument(data);
+		newDocument: function(data, type) {
+			editor.newDocument(data, type);
 		},
 
 		findDocument: function(path) {
@@ -172,30 +183,55 @@ eXide.app = (function() {
 				$("#open-dialog").dialog("close");
 		},
 
-		$doOpenDocument: function(resource, callback) {
+		$doOpenDocument: function(resource, callback, reload) {
 			resource.path = eXide.util.normalizePath(resource.path);
             var doc = editor.getDocument(resource.path);
-            if (doc) {
+            if (doc && !reload) {
                 editor.switchTo(doc);
-                return;
+                return true;
             }
 			$.ajax({
 				url: "modules/load.xql?path=" + resource.path,
 				dataType: 'text',
 				success: function (data, status, xhr) {
-					var mime = eXide.util.mimeTypes.getMime(xhr.getResponseHeader("Content-Type"));
-					editor.openDocument(data, mime, resource);
+                    if (reload) {
+                        editor.reload(data);
+                    } else {
+    					var mime = eXide.util.mimeTypes.getMime(xhr.getResponseHeader("Content-Type"));
+    					editor.openDocument(data, mime, resource);
+                    }
 					if (callback) {
 						callback.call(null, resource);
 					}
+                    return true;
 				},
 				error: function (xhr, status) {
 					eXide.util.error("Failed to load document " + resource.path + ": " + 
 							xhr.status + " " + xhr.statusText);
+                    return false;
 				}
 			});
 		},
 
+        reloadDocument: function() {
+            var doc = editor.getActiveDocument();
+            if (doc.isSaved()) {
+                eXide.app.$reloadDocument(doc);
+            } else {
+                eXide.util.Dialog.input("Reload Document", "Do you really want to reload the document?", function() {
+                    eXide.app.$reloadDocument(doc);
+                });
+            }
+        },
+        
+        $reloadDocument: function(doc) {
+            var resource = {
+                name: doc.getName(),
+                path: doc.getPath()
+            };
+            eXide.app.$doOpenDocument(resource, null, true);
+        },
+        
 		closeDocument: function() {
 			if (!editor.getActiveDocument().isSaved()) {
 				$("#dialog-confirm-close").dialog({
@@ -389,7 +425,7 @@ eXide.app = (function() {
 		
 		manage: function() {
 			eXide.app.requireLogin(function() {
-                dbBrowser.reload(["reload", "create", "upload", "open", "cut", "copy", "paste"], "manage");
+                dbBrowser.reload(["reload", "create", "upload", "properties", "open", "cut", "copy", "paste"], "manage");
                 $("#open-dialog").dialog("option", "title", "DB Manager");
                 $("#open-dialog").dialog("option", "buttons", { 
                     "Close": function() { $(this).dialog("close"); }
@@ -491,6 +527,9 @@ eXide.app = (function() {
 				}
                 restoring[doc.path] = doc;
 			}
+            if (!editor.getActiveDocument()) {
+                eXide.app.newDocument("", "xquery");
+            }
 			deploymentEditor.restoreState();
 			return restoring;
 		},
@@ -505,22 +544,20 @@ eXide.app = (function() {
 			deploymentEditor.saveState();
 		},
 		
-		ping: function() {
-			$.ajax({
-				url: "index.html",
-				type: "HEAD",
-				success: function () {
-					setTimeout(function () { eXide.app.ping(); }, 30000);
-				},
-				error: function (xhr, textStatus) {
-					$.log("ping failed: %s", textStatus);
-					eXide.app.login = null;
-					$("#user").empty();
-					$("#login").text("Login");
-				}
-			});
-		},
-		
+        getLogin: function() {
+            $.ajax({
+                url: "login",
+                dataType: "json",
+                success: function(data) {
+                    eXide.app.login = data;
+                    $("#user").text("Logged in as " + eXide.app.login + ". ");
+                },
+                error: function (xhr, textStatus) {
+                    eXide.app.login = null;
+                }
+            })
+        },
+        
 		$checkLogin: function () {
 			if (eXide.app.login)
 				return true;
@@ -542,12 +579,18 @@ eXide.app = (function() {
                 callback();
         },
         
+        showPreferences: function() {
+            preferences.show();
+        },
+        
         getPreference: function(key) {
             return preferences.get(key);
         },
         
-		initGUI: function() {
-			$("body").layout({
+		initGUI: function(menu) {
+            eXide.app.getLogin();
+            
+			var layout = $("body").layout({
 				enableCursorHotkey: false,
 				north__size: 70,
 				north__resizable: false,
@@ -562,11 +605,9 @@ eXide.app = (function() {
 				center__onresize: eXide.app.resize,
 				center__contentSelector: ".content"
 			});
-			
-            var menu = new eXide.util.Menubar($(".menu"));
             
 			$("#open-dialog").dialog({
-				title: "Open File",
+				title: "Open file",
 				modal: false,
 		        autoOpen: false,
 		        height: 480,
@@ -580,16 +621,23 @@ eXide.app = (function() {
 				autoOpen: false,
 				buttons: {
 					"Login": function() {
+                        var user = $("#login-form input[name=\"user\"]").val();
+                        var password = $("#login-form input[name=\"password\"]").val();
+                        var params = {
+                            user: user, password: password
+                        }
+                        if ($("#login-form input[name=\"duration\"]").is(":checked")) {
+                            params.duration = "P14D";
+                        }
 						$.ajax({
 							url: "login",
-							data: $("#login-form").serialize(),
+							data: params,
+                            dataType: "json",
 							success: function (data) {
 								eXide.app.login = $("#login-form input[name=\"user\"]").val();
 								$.log("Logged in as %s", eXide.app.login);
 								$("#login-dialog").dialog("close");
 								$("#user").text("Logged in as " + eXide.app.login + ". ");
-								$("#login").text("Logout");
-								setTimeout(function () { eXide.app.ping(); }, 30000);
 								editor.focus();
 							},
 							error: function () {
@@ -643,7 +691,7 @@ eXide.app = (function() {
 				}
 			});
 			button.click(eXide.app.openDocument);
-            menu.click("#menu-file-open", eXide.app.openDocument);
+            menu.click("#menu-file-open", eXide.app.openDocument, "openDocument");
 			
 			button = $("#close").button({
 				icons: {
@@ -651,16 +699,21 @@ eXide.app = (function() {
 				}
 			});
 			button.click(eXide.app.closeDocument);
-			menu.click("#menu-file-close", eXide.app.closeDocument);
+			menu.click("#menu-file-close", eXide.app.closeDocument, "closeDocument");
 			
 			button = $("#new").button({
 				icons: {
 					primary: "ui-icon-document"
 				}
 			});
-			button.click(eXide.app.newDocument);
-			menu.click("#menu-file-new", eXide.app.newDocument);
-			
+			button.click(function() {
+                eXide.app.newDocument(null, "xquery");
+			});
+			menu.click("#menu-file-new", eXide.app.newDocument, "newDocument");
+    		menu.click("#menu-file-new-xquery", function() {
+                eXide.app.newDocument(null, "xquery");
+    		}, "newXQuery");
+            
 			button = $("#run").button({
 				icons: {
 					primary: "ui-icon-play"
@@ -687,9 +740,11 @@ eXide.app = (function() {
 				}
 			});
 			button.click(eXide.app.saveDocument);
-			menu.click("#menu-file-save", eXide.app.saveDocument);
+			menu.click("#menu-file-save", eXide.app.saveDocument, "saveDocument");
             menu.click("#menu-file-save-as", eXide.app.saveDocumentAs);
 			
+            menu.click("#menu-file-reload", eXide.app.reloadDocument);
+            
 			button = $("#download").button({
 				icons: {
 					primary: "ui-icon-transferthick-e-w"
@@ -697,34 +752,40 @@ eXide.app = (function() {
 			});
 			button.click(eXide.app.download);
 			menu.click("#menu-file-download", eXide.app.download);
-			menu.click("#menu-file-manager", eXide.app.manage);
+			menu.click("#menu-file-manager", eXide.app.manage, "dbManager");
 			// menu-only events
 			menu.click("#menu-deploy-new", eXide.app.newDeployment);
 			menu.click("#menu-deploy-edit", eXide.app.deploymentSettings);
 			menu.click("#menu-deploy-deploy", eXide.app.deploy);
-			menu.click("#menu-deploy-sync", eXide.app.synchronize);
+			menu.click("#menu-deploy-sync", eXide.app.synchronize, "synchronize");
             menu.click("#menu-deploy-download", eXide.app.downloadApp);
 			menu.click("#menu-edit-undo", function () {
 				editor.editor.undo();
-			});
+			}, "undo");
 			menu.click("#menu-edit-redo", function () {
 				editor.editor.redo();
-			});
+			}, "redo");
+            menu.click("#menu-edit-find", function() {
+                editor.quicksearch.start();
+            }, "searchIncremental");
             menu.click("#menu-edit-toggle-comment", function () {
                 editor.editor.toggleCommentLines();
-            });
+            }, "toggleComment");
 			menu.click("#menu-edit-preferences", function() {
                 preferences.show(); 		
-			});
+			}, "preferences");
             
             menu.click("#menu-navigate-definition", function () {
                 editor.exec("gotoDefinition");
-            });
+            }, "gotoDefinition");
             menu.click("#menu-navigate-modules", function () {
                 var doc = editor.getActiveDocument();
 	    		eXide.find.Modules.select(doc.syntax);
-            });
-			menu.click("#menu-deploy-run", eXide.app.openApp);
+            }, "findModule");
+            menu.click("#menu-navigate-info", function() {
+                editor.exec("showFunctionDoc");
+            }, "functionDoc");
+			menu.click("#menu-deploy-run", eXide.app.openApp, "openApp");
 			
             menu.click("#menu-help-keyboard", function (ev) {
 				$("#keyboard-help").dialog("open");
@@ -742,15 +803,22 @@ eXide.app = (function() {
 			// register listener to update syntax drop down
 			editor.addEventListener("activate", null, function (doc) {
 				$("#syntax").val(doc.getSyntax());
+                var app = projects.getProjectFor(doc.getBasePath());
+                if (app) {
+                    $("#toolbar-current-app").text(app.abbrev);
+                    $("#menu-deploy-active").text(app.abbrev);
+                } else {
+                    $("#toolbar-current-app").text("unknown");
+                    $("#menu-deploy-active").text("unknown");
+                }
 			});
 			
-			$("#login").click(function (ev) {
+			$("#user").click(function (ev) {
 				ev.preventDefault();
 				if (eXide.app.login) {
 					// logout
-					$.get("logout");
-					$("#user").empty();
-					$("#login").text("Login");
+					$.get("login?logout=logout");
+					$("#user").text("Login");
 					eXide.app.login = null;
 				} else {
 					$("#login-dialog").dialog("open");
@@ -758,6 +826,21 @@ eXide.app = (function() {
 			});
 			$('#results-container .next').click(eXide.app.browseNext);
 			$('#results-container .previous').click(eXide.app.browsePrevious);
+            
+            // dirty workaround to fix editor height
+            layout.toggle("south");
+            layout.toggle("south");
+            
+            $("#error-status").mouseover(function(ev) {
+                var error = this;
+                $("#ext-status-bar").each(function() {
+                    this.innerHTML = error.innerHTML;
+                    $(this).css("display", "block");
+                });
+            });
+            $("#ext-status-bar").mouseout(function(ev) {
+               $(this).css("display", "none");
+            });
 		}
 	};
 }());
