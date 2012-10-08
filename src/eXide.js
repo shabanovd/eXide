@@ -75,9 +75,16 @@ eXide.app = (function() {
 
 		init: function(afterInitCallback) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 			editor = new eXide.edit.Editor(document.getElementById("editor"));
 			debuger = new eXide.XQueryDebuger(document.getElementById("editor"));
 			deploymentEditor = new eXide.edit.PackageEditor(document.getElementById("deployment-editor"));
+=======
+            var menu = new eXide.util.Menubar($(".menu"));
+            projects = new eXide.edit.Projects();
+			editor = new eXide.edit.Editor(document.getElementById("editor"), menu);
+			deploymentEditor = new eXide.edit.PackageEditor(projects);
+>>>>>>> refs/remotes/wolfs/master
 =======
             var menu = new eXide.util.Menubar($(".menu"));
             projects = new eXide.edit.Projects();
