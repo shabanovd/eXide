@@ -744,3 +744,7 @@ form.file_upload button,.no-js .file_upload_label,.no-js .file_upload_overall_pr
 .file_upload .ui-widget {
 	font-size: 1em;
 }
+
+.debug {
+    background-color: #ff0033;
+}

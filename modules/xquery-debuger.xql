@@ -21,18 +21,28 @@
 :)
 xquery version "3.0";
 
-let $session := request:get-parameter("sid", "")
-let $action := request:get-parameter("action", "") return
+declare function local:request-params(){
+    for $param in request:get-parameter-names()
+    return <param name="{$param}" value="{request:get-parameter($param, ())}"/>
+};
+
+let $session := request:get-parameter("sid", ())
+let $action := request:get-parameter("action", ()) return
 switch($action)
 case "start" return
-    let $id := dbgr:init(request:get-parameter("location", ()))
+    let $location := request:get-parameter("location", ())
+    let $id := dbgr:init($location)
+    let $wait := util:wait(500)
     return 
-        <debug id="{$id}">
+        <debug id="{$id}" location="{$location}">
             {
-                element {$action} { dbgr:run($id) }
+                element {$action} { true() },
+                <session>{ dbgr:stack-get($session) }</session>,
+                <context>{ dbgr:context-get($session) }</context>
             }
         </debug>
 case "stop" return
+    let $wait := util:wait(500) return
     <debug id="{$session}">
         {
             element {$action} { dbgr:stop($session) }
@@ -40,38 +50,41 @@ case "stop" return
     </debug>
 case "step" return
     <debug id="{$session}">
-        {
-            element {$action} { dbgr:step-over($session) },
-            dbgr:context-get($session),
-            dbgr:stack-get($session)
-        }
+        <step name="{$action}">{ dbgr:step-over($session) }</step>
+        <session>dbgr:stack-get($session)</session>
+        <context>dbgr:context-get($session)</context>
     </debug>
 case "step-into" return
+    let $wait := util:wait(500) return
     <debug id="{$session}">
-        {
-            element {$action} { dbgr:step-into($session) },
-            dbgr:context-get($session),
-            dbgr:stack-get($session)
-        }
+        <step name="{$action}">{ dbgr:step-into($session)}</step>
+        <session>{ dbgr:stack-get($session) }</session>
+        <context>{ dbgr:context-get($session) }</context>
     </debug>
 case "step-out" return
+    let $wait := util:wait(500) return
     <debug id="{$session}">
-        {
-            element {$action} { dbgr:step-out($session) },
-            dbgr:context-get($session),
-            dbgr:stack-get($session)
-        }
+        { element {$action} { dbgr:step-out($session) } }
+        <session>{ dbgr:stack-get($session) }</session>
+        <context>{ dbgr:context-get($session) }</context>
     </debug>
 case "stack" return
     <debug id="{$session}">
-        {
-            dbgr:stack-get($session)
-        }
+        <session>{ dbgr:stack-get($session) }</session>
     </debug>
 case "variables" return
     <debug id="{$session}">
-        {
-            dbgr:context-get($session)
-        }
+        <context>{ 
+            try{
+                dbgr:context-get($session)
+            } catch * {
+                <response status="fail">
+            <message>Error: { $err:description }</message>
+            {
+                for $param in request:get-parameter-names()
+                return <param name="{$param}" value="{request:get-parameter($param, ())}"/>
+            }
+        </response>
+            }}</context>
     </debug>
-default return ()
+default return <debuger>Hello from debugger</debuger>

@@ -52,8 +52,6 @@ eXide.namespace("eXide.app");
 eXide.app = (function() {
 	
 	var editor;
-	
-	var debuger;
 
 	var deploymentEditor;
 	var dbBrowser;
@@ -70,7 +68,6 @@ eXide.app = (function() {
 
 		init: function(afterInitCallback) {
 			editor = new eXide.edit.Editor(document.getElementById("editor"));
-			debuger = new eXide.XQueryDebuger(document.getElementById("editor"));
 			deploymentEditor = new eXide.edit.PackageEditor(document.getElementById("deployment-editor"));
 			dbBrowser = new eXide.browse.Browser(document.getElementById("open-dialog"));
             deploymentEditor.addEventListener("change", null, function() {
@@ -323,8 +320,32 @@ eXide.app = (function() {
 		},
 		
 		startDebug: function() {
-		    debuger.startDebug();
+            var doc = editor.getActiveDocument();
+//
+            var line = doc.getCurrentLine();
+//            editor
+//
+//		    doc.debug();
+//            editor.renderer_.addGutterDecoration(line, "debug");
+//            editor.renderer_.update();
+
+            //renderer changes is equal for all documents
+            // + rerender lines in switching between documents
+            // - or refactor to individual renderer for each document
+
+            if (doc.debuger == null) doc.debuger = new eXide.XQueryDebuger(doc);
+            if (doc.debuger.addMarkedLine(line)) editor.renderer_.addGutterDecoration(line, "debug");
+            else editor.renderer_.removeGutterDecoration(line, "debug");
+            doc.debuger.startDebug();
 		},
+
+        debugStepOver: function(){
+            editor.getActiveDocument().debuger.stepNext();
+        },
+
+        debugStop: function(){
+            editor.getActiveDocument().debuger.stopDebugging();
+        },
 
 		checkQuery: function() {
 			editor.validate();
@@ -725,7 +746,30 @@ eXide.app = (function() {
 	    		eXide.find.Modules.select(doc.syntax);
             });
 			menu.click("#menu-deploy-run", eXide.app.openApp);
-			
+
+            menu.click("#menu-debug-start", function(){
+                var doc = editor.getActiveDocument();
+//
+                var line = doc.getCurrentLine();
+
+                if (doc.debuger == null) doc.debuger = new eXide.XQueryDebuger(doc);
+//                if (doc.debuger.addMarkedLine(line)) editor.renderer_.addGutterDecoration(line, "debug");
+//                else editor.renderer_.removeGutterDecoration(line, "debug");
+                $.log("Starting debug");
+                doc.debuger.startDebugging();
+            });
+            menu.click("#menu-debug-step-over", function(){
+                $.log("Step next");
+                editor.getActiveDocument().debuger.stepNext();
+            });
+            menu.click("#menu-debug-stop", function(){
+                $.log("Stop debugging");
+                editor.getActiveDocument().debuger.stopDebugging();
+            });
+            menu.click("#menu-debug-variables", function(){
+                editor.getActiveDocument().debuger.getVariables();
+            });
+
             menu.click("#menu-help-keyboard", function (ev) {
 				$("#keyboard-help").dialog("open");
 			});

@@ -79,7 +79,14 @@ else if ($exist:resource eq "index.html") then
             <forward url="modules/view.xql"/>
         </view>
     </dispatch>
-
+    
+else if ($exist:resource eq 'debug') then (
+        <dispatch xmlns="http://exist.sourceforge.net/NS/exist">
+            <forward url="modules/xquery-debuger.xql">
+                {local:set-user()}
+            </forward>
+        </dispatch>)
+        
 else if ($exist:resource eq 'execute') then
     let $query := request:get-parameter("qu", ())
     let $base := request:get-parameter("base", ())

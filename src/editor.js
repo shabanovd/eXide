@@ -42,11 +42,22 @@ eXide.edit.Document = (function() {
         } else if (wrap < 0) {
             this.$session.setWrapLimitRange(null, null);
         }
+
+        this.debuger = new eXide.XQueryDebuger(this);
+
 	};
+
+    Constr.prototype.debug = function() {
+        this.debuger.startDebug();
+    }
 	
 	Constr.prototype.getText = function() {
 		return this.$session.getValue();
 	};
+
+    Constr.prototype.getLinesCount = function() {
+        return this.$session.doc.$lines.length;
+    };
 	
 	Constr.prototype.getName = function() {
 		return this.name;
@@ -151,11 +162,12 @@ eXide.edit.Editor = (function () {
 		$this.newDocCounter = 0;
 		$this.pendingCheck = false;
         $this.themes = {};
+        $this.renderer_ = new Renderer($this.container, "ace/theme/eclipse");
 		
-	    var renderer = new Renderer($this.container, "ace/theme/eclipse");
-	    renderer.setShowGutter(true);
+//	    var renderer = new Renderer($this.container, "ace/theme/eclipse");
+	    $this.renderer_.setShowGutter(true);
 	    
-		this.editor = new Editor(renderer);
+		this.editor = new Editor($this.renderer_);
 		this.editor.setBehavioursEnabled(true);
 		
         eXide.edit.commands.init($this);
@@ -208,10 +220,17 @@ eXide.edit.Editor = (function () {
             "html": new eXide.edit.XMLModeHelper($this),
             "less": new eXide.edit.LessModeHelper($this)
 		};
+
+//        this.debuger = new eXide.XQueryDebuger(this);
 	};
 
     // Extend eXide.events.Sender for event support
     eXide.util.oop.inherit(Constr, eXide.events.Sender);
+
+    Constr.prototype.debug_markLine = function(){
+        var line = editor.getActiveDocument().getCurrentLine();
+        this.renderer_.addGutterDecoration(line, "debuger");
+    };
     
 	Constr.prototype.init = function() {
 	    if (this.documents.length == 0)
@@ -563,7 +582,7 @@ eXide.edit.Editor = (function () {
 			}
 		});
 		this.updateStatus("");
-		this.$triggerEvent("activate", [doc]);
+        this.$triggerEvent("activate", [doc]);
 	};
 	
 	Constr.prototype.updateTabStatus = function(oldPath, doc) {
