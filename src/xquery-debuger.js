@@ -24,6 +24,7 @@ eXide.namespace("eXide.XQueryDebuger");
 eXide.XQueryDebuger = (function () {
 
 	Constr = function(xqDocument) {
+        this.editor = null;
         this.forDebugLines = [];
         this.debugContext = "";
         this.main = "xmldb:exist://localhost:8080";
@@ -70,6 +71,10 @@ eXide.XQueryDebuger = (function () {
 //		});
 //	};
 
+    Constr.prototype.setEditor = function(editor){
+        this.editor = editor;
+    };
+
     Constr.prototype.addMarkedLine = function(line){
         $.log("Size " + this.forDebugLines.length);
         $.log("Line index " + this.forDebugLines.indexOf(line))
@@ -111,6 +116,14 @@ eXide.XQueryDebuger = (function () {
         this.debug("step");
     };
 
+    Constr.prototype.stepInto = function(){
+        this.debug("step-into");
+    };
+
+    Constr.prototype.stepOut = function(){
+        this.debug("step-out");
+    };
+
     Constr.prototype.getVariables = function(){
         this.debug("variables");
     };
@@ -130,7 +143,21 @@ eXide.XQueryDebuger = (function () {
                 var elem = xml.documentElement;
                 if (elem.nodeName == 'debug') {
                     $this.debugContext = $(elem).attr("id");
-                    eXide.util.message($(elem).text());
+                    var currentLine = $(elem).find("session stack").attr("lineno");
+//                    eXide.util.message($(elem).text());
+
+                    var table = "<div>" + currentLine + "</div><b>variables:</b><table><tr><td>name</td><td>value</td></tr>";//</table>");
+//                    $.log($(elem).find("context property"));
+                    $(elem).find("context property").each(function(){
+//                        $.log()
+                        table += "<tr><td>$" + $(this).attr("name") + "</td><td>" + $(this).text() + "</td></tr>";
+//                        table.children("table").append(tr);
+                    });
+                    table += "</table>";
+                    $("#debug-container .results").html(
+                        table
+                    );
+                    $this.editor.editor.gotoLine(currentLine, 0);
                 }
                 $.log(action + ": " + $this.debugContext);
             },
@@ -140,8 +167,19 @@ eXide.XQueryDebuger = (function () {
         });
     }
 	
-	// extends ModeHelper
-//	eXide.util.oop.inherit(Constr, eXide.XQueryDebuger);
-	
 	return Constr;
 }());
+
+//<debug id="1985350732">
+//    <step name="step">true</step>
+//    <session>
+//        <response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="http://xdebug.org/dbgp/xdebug" command="stack_get" transaction_id="null">
+//            <stack level="0" lineno="3" type="file" filename="dbgp://database/db/for_debug.xql" cmdbegin="3:6"/>
+//        </response>
+//    </session>
+//    <context>
+//        <response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="http://xdebug.org/dbgp/xdebug" command="context_get" context="null" transaction_id="null">
+//            <property name="a" fullname="a" type="xs:integer" size="1" encoding="none">2</property>
+//        </response>
+//    </context>
+//</debug>

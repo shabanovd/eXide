@@ -16,9 +16,6 @@
  :  You should have received a copy of the GNU General Public License
  :  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  :)
-(:
- : author Vasiliy Startsev (wstarcev@gmail.com)
-:)
 xquery version "3.0";
 
 declare function local:request-params(){
@@ -37,8 +34,8 @@ case "start" return
         <debug id="{$id}" location="{$location}">
             {
                 element {$action} { true() },
-                <session>{ dbgr:stack-get($session) }</session>,
-                <context>{ dbgr:context-get($session) }</context>
+                <session>{ dbgr:stack-get($id) }</session>,
+                <context>{ dbgr:context-get($id) }</context>
             }
         </debug>
 case "stop" return
@@ -51,8 +48,8 @@ case "stop" return
 case "step" return
     <debug id="{$session}">
         <step name="{$action}">{ dbgr:step-over($session) }</step>
-        <session>dbgr:stack-get($session)</session>
-        <context>dbgr:context-get($session)</context>
+        <session>{dbgr:stack-get($session)}</session>
+        <context>{dbgr:context-get($session)}</context>
     </debug>
 case "step-into" return
     let $wait := util:wait(500) return

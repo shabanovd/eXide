@@ -752,18 +752,24 @@ eXide.app = (function() {
 //
                 var line = doc.getCurrentLine();
 
+                doc.debuger.setEditor(editor);
+
                 if (doc.debuger == null) doc.debuger = new eXide.XQueryDebuger(doc);
 //                if (doc.debuger.addMarkedLine(line)) editor.renderer_.addGutterDecoration(line, "debug");
 //                else editor.renderer_.removeGutterDecoration(line, "debug");
                 $.log("Starting debug");
                 doc.debuger.startDebugging();
             });
-            menu.click("#menu-debug-step-over", function(){
-                $.log("Step next");
+            $("#debug-step-over").click(function(){
                 editor.getActiveDocument().debuger.stepNext();
             });
+            menu.click("#menu-debug-step-into", function(){
+                editor.getActiveDocument().debuger.stepInto();
+            });
+            menu.click("#menu-debug-step-out", function(){
+                editor.getActiveDocument().debuger.stepOut();
+            });
             menu.click("#menu-debug-stop", function(){
-                $.log("Stop debugging");
                 editor.getActiveDocument().debuger.stopDebugging();
             });
             menu.click("#menu-debug-variables", function(){

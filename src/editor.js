@@ -120,7 +120,7 @@ eXide.edit.Document = (function() {
 		var lead = sel.getSelectionLead();
 		return lead.row;
 	};
-    
+
 	return Constr;
 }());
 
